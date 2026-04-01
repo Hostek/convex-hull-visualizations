@@ -4,7 +4,7 @@ import matplotlib.animation as animation
 
 NUM_POINTS = 40
 GIF_FILENAME = "monotone_chain.gif"
-FPS = 8
+FPS = 4
 DPI = 120
 
 BG_COLOR = "#121212"
@@ -14,6 +14,7 @@ FINAL_COLOR = "#50fa7b"
 CHECK_COLOR = "#f1fa8c"
 BAD_COLOR = "#ff5555"
 ACTIVE_POINT = "#ffffff"
+TEXT_COLOR = "#bd93f9"
 
 
 def cross_product(o, a, b):
@@ -22,8 +23,7 @@ def cross_product(o, a, b):
 
 def generate_frames(points):
     """
-    Runs Monotone Chain and yields the state at every step
-    so we can animate the logic frame-by-frame.
+    Runs Monotone Chain and yields the state at every step.
     """
     points = sorted(points, key=lambda p: (p[0], p[1]))
     frames = []
@@ -31,40 +31,95 @@ def generate_frames(points):
     lower = []
     for p in points:
         frames.append(
-            {"lower": list(lower), "upper": [], "active": p, "action": "eval"}
+            {
+                "lower": list(lower),
+                "upper": [],
+                "active": p,
+                "action": "eval",
+                "phase": "lower_build",
+            }
         )
 
         while len(lower) >= 2 and cross_product(lower[-2], lower[-1], p) <= 0:
-            frames.append(
-                {"lower": list(lower), "upper": [], "active": p, "action": "pop"}
-            )
+            for _ in range(2):
+                frames.append(
+                    {
+                        "lower": list(lower),
+                        "upper": [],
+                        "active": p,
+                        "action": "pop",
+                        "phase": "lower_build",
+                    }
+                )
             lower.pop()
 
         lower.append(p)
         frames.append(
-            {"lower": list(lower), "upper": [], "active": None, "action": "add"}
+            {
+                "lower": list(lower),
+                "upper": [],
+                "active": None,
+                "action": "add",
+                "phase": "lower_build",
+            }
+        )
+
+    for _ in range(6):
+        frames.append(
+            {
+                "lower": list(lower),
+                "upper": [],
+                "active": None,
+                "action": "pause",
+                "phase": "transition",
+            }
         )
 
     upper = []
     for p in reversed(points):
         frames.append(
-            {"lower": lower, "upper": list(upper), "active": p, "action": "eval"}
+            {
+                "lower": lower,
+                "upper": list(upper),
+                "active": p,
+                "action": "eval",
+                "phase": "upper_build",
+            }
         )
 
         while len(upper) >= 2 and cross_product(upper[-2], upper[-1], p) <= 0:
-            frames.append(
-                {"lower": lower, "upper": list(upper), "active": p, "action": "pop"}
-            )
+            for _ in range(2):
+                frames.append(
+                    {
+                        "lower": lower,
+                        "upper": list(upper),
+                        "active": p,
+                        "action": "pop",
+                        "phase": "upper_build",
+                    }
+                )
             upper.pop()
 
         upper.append(p)
         frames.append(
-            {"lower": lower, "upper": list(upper), "active": None, "action": "add"}
+            {
+                "lower": lower,
+                "upper": list(upper),
+                "active": None,
+                "action": "add",
+                "phase": "upper_build",
+            }
         )
 
-    for _ in range(15):
+    for _ in range(12):
         frames.append(
-            {"lower": lower, "upper": upper, "active": None, "action": "done"}
+            {
+                "lower": lower,
+                "upper": upper,
+                "active": None,
+                "action": "done",
+                "phase": "done",
+            }
         )
 
     return frames
@@ -83,8 +138,11 @@ fig, ax = plt.subplots(figsize=(6, 6), facecolor=BG_COLOR)
 plt.subplots_adjust(left=0, right=1, bottom=0, top=1)
 
 padding = 2
-ax.set_xlim(min(x) - padding, max(x) + padding)
-ax.set_ylim(min(y) - padding, max(y) + padding)
+xlim = (min(x) - padding, max(x) + padding)
+ylim = (min(y) - padding, max(y) + padding)
+
+center_x = np.mean(x)
+center_y = np.mean(y)
 
 
 def update(frame_data):
@@ -92,13 +150,14 @@ def update(frame_data):
     ax.set_facecolor(BG_COLOR)
     ax.axis("off")
 
-    ax.set_xlim(min(x) - padding, max(x) + padding)
-    ax.set_ylim(min(y) - padding, max(y) + padding)
+    ax.set_xlim(xlim)
+    ax.set_ylim(ylim)
 
     lower = frame_data["lower"]
     upper = frame_data["upper"]
     active = frame_data["active"]
     action = frame_data["action"]
+    phase = frame_data["phase"]
 
     ax.scatter(*zip(*points), color=POINT_COLOR, s=30, zorder=1)
 
@@ -107,11 +166,36 @@ def update(frame_data):
             px, py = zip(*pts)
             ax.plot(px, py, color=color, linewidth=lw, linestyle=style, zorder=2)
 
-    current_hull_color = FINAL_COLOR if action == "done" else HULL_COLOR
-    plot_line(lower, current_hull_color)
-    plot_line(upper, current_hull_color)
+    if phase == "lower_build":
+        plot_line(lower, HULL_COLOR)
 
-    active_hull = upper if len(upper) > 0 else lower
+    elif phase == "transition":
+        plot_line(lower, FINAL_COLOR)
+        bbox_props = dict(
+            boxstyle="round,pad=0.6", fc=BG_COLOR, ec=FINAL_COLOR, lw=1.5, alpha=0.9
+        )
+        ax.text(
+            center_x,
+            center_y,
+            "Lower Hull Complete\nStarting Upper...",
+            color=TEXT_COLOR,
+            fontsize=14,
+            ha="center",
+            va="center",
+            fontweight="bold",
+            bbox=bbox_props,
+            zorder=10,
+        )
+
+    elif phase == "upper_build":
+        plot_line(lower, FINAL_COLOR)
+        plot_line(upper, HULL_COLOR)
+
+    elif phase == "done":
+        plot_line(lower, FINAL_COLOR)
+        plot_line(upper, FINAL_COLOR)
+
+    active_hull = upper if phase == "upper_build" else lower
 
     if action == "eval" and len(active_hull) > 0 and active:
         last_point = active_hull[-1]
@@ -135,8 +219,9 @@ def update(frame_data):
             linewidth=2,
             zorder=4,
         )
-
-        ax.scatter(p2[0], p2[1], color=BAD_COLOR, s=100, marker="x", zorder=5)
+        ax.scatter(
+            p2[0], p2[1], color=BAD_COLOR, s=120, marker="x", linewidths=2, zorder=5
+        )
 
     if active:
         ax.scatter(
@@ -145,15 +230,16 @@ def update(frame_data):
             color=ACTIVE_POINT,
             s=60,
             edgecolors=CHECK_COLOR,
+            linewidths=1.5,
             zorder=5,
         )
 
 
-print(f"Generating {len(frames)} frames...")
+print(f"Generating {len(frames)} frames at {FPS} FPS...")
 ani = animation.FuncAnimation(
     fig, update, frames=frames, interval=1000 / FPS, repeat=False
 )
 
 print(f"Saving to {GIF_FILENAME} (this may take a few seconds)...")
 ani.save(GIF_FILENAME, dpi=DPI, writer=animation.PillowWriter(fps=FPS))
-print("Done! You can now upload the GIF to your website.")
+print("Done!")
