@@ -10,17 +10,23 @@
     }
 
     function playWhenVisible(node: HTMLVideoElement) {
+        node.muted = true
+        node.defaultMuted = true
+        node.playsInline = true
+
         const observer = new IntersectionObserver(
             (entries) => {
                 entries.forEach((entry) => {
                     if (entry.isIntersecting) {
-                        node.play().catch(() => {})
+                        node.play().catch((err) =>
+                            console.warn("Video play prevented:", err),
+                        )
                     } else {
                         node.pause()
                     }
                 })
             },
-            { threshold: 0.1 },
+            { threshold: 0.15 },
         )
 
         observer.observe(node)
@@ -106,10 +112,11 @@
 </svelte:head>
 
 <main class="mx-auto max-w-4xl px-6 py-16">
-    <!-- Hero Section -->
-    <div class="prose prose-invert prose-zinc max-w-none mb-16">
+    <div
+        class="prose prose-invert prose-zinc max-w-none mb-16 text-center sm:text-left"
+    >
         <h1
-            class="bg-linear-to-r from-cyan-400 to-green-400 bg-clip-text text-transparent mb-4 text-5xl font-extrabold"
+            class="bg-linear-to-r from-cyan-400 to-green-400 bg-clip-text text-transparent mb-4 text-5xl font-extrabold tracking-tight"
         >
             Convex Hull Algorithms
         </h1>
@@ -120,25 +127,25 @@
         </p>
     </div>
 
-    <section class="mb-20">
+    <section class="mb-24">
         <div class="prose prose-invert prose-zinc max-w-none mb-6">
             <h2>Time & Space Complexity</h2>
         </div>
         <div
-            class="overflow-x-auto rounded-xl border border-zinc-800 bg-zinc-900/50 backdrop-blur-sm"
+            class="overflow-x-auto rounded-2xl border border-zinc-800 bg-zinc-900/50 backdrop-blur-sm shadow-xl"
         >
             <table
-                class="w-full text-left text-sm text-zinc-300 whitespace-nowrap"
+                class="w-full text-left text-sm text-zinc-300 whitespace-nowrap m-0"
             >
-                <thead class="bg-zinc-800/50 text-xs uppercase text-zinc-400">
+                <thead class="bg-zinc-800/80 text-xs uppercase text-zinc-400">
                     <tr>
-                        <th class="px-6 py-4 font-semibold tracking-wider"
+                        <th class="px-6 py-5 font-semibold tracking-wider"
                             >Algorithm</th
                         >
-                        <th class="px-6 py-4 font-semibold tracking-wider"
+                        <th class="px-6 py-5 font-semibold tracking-wider"
                             >Time Complexity</th
                         >
-                        <th class="px-6 py-4 font-semibold tracking-wider"
+                        <th class="px-6 py-5 font-semibold tracking-wider"
                             >Space Complexity</th
                         >
                     </tr>
@@ -157,7 +164,9 @@
                     {/each}
                 </tbody>
             </table>
-            <div class="p-4 text-xs text-zinc-500 italic bg-zinc-950/50">
+            <div
+                class="p-5 text-xs text-zinc-500 italic bg-zinc-950/80 border-t border-zinc-800/50"
+            >
                 * Where <span class="font-semibold text-zinc-300">n</span> is
                 the total number of points, and
                 <span class="font-semibold text-zinc-300">h</span> is the number
@@ -166,33 +175,46 @@
         </div>
     </section>
 
-    <div class="space-y-24">
+    <div class="space-y-32">
         {#each algorithms as algo (algo.id)}
-            <section id={algo.id} class="group scroll-mt-8">
-                <div class="prose prose-invert prose-zinc max-w-none mb-6">
-                    <div class="flex items-center gap-4">
-                        <h2 class="m-0 text-3xl font-bold">{algo.name}</h2>
+            <section id={algo.id} class="group scroll-mt-12">
+                <div class="prose prose-invert prose-zinc max-w-none mb-8">
+                    <h2 class="m-0 text-3xl font-bold mb-3">{algo.name}</h2>
+
+                    <div
+                        class="flex flex-wrap items-center gap-3 mt-2 mb-5 not-prose"
+                    >
                         <span
-                            class="rounded-full bg-zinc-800 px-3 py-1 text-sm font-medium text-cyan-300 border border-zinc-700"
+                            class="inline-flex items-center gap-2 rounded-lg bg-zinc-800/80 px-3 py-1.5 text-sm font-medium text-cyan-300 border border-zinc-700 shadow-sm"
                         >
+                            <span class="text-zinc-400 font-normal">Time:</span>
                             {@html math(algo.time)}
                         </span>
+                        <span
+                            class="inline-flex items-center gap-2 rounded-lg bg-zinc-800/80 px-3 py-1.5 text-sm font-medium text-green-400 border border-zinc-700 shadow-sm"
+                        >
+                            <span class="text-zinc-400 font-normal">Space:</span
+                            >
+                            {@html math(algo.space)}
+                        </span>
                     </div>
-                    <p class="text-zinc-400 mt-3 text-lg leading-relaxed">
+
+                    <p class="text-zinc-400 text-lg leading-relaxed mb-8">
                         {algo.desc}
                     </p>
                 </div>
 
                 <div
-                    class="relative overflow-hidden rounded-2xl border border-zinc-800 bg-[#121212] shadow-2xl transition-all duration-500 group-hover:border-zinc-600 group-hover:shadow-cyan-900/10"
+                    class="mx-auto max-w-2xl relative overflow-hidden rounded-2xl border border-zinc-800 bg-[#121212] shadow-2xl transition-all duration-500 group-hover:border-zinc-600 group-hover:shadow-cyan-900/10"
                 >
                     <video
                         use:playWhenVisible
                         src={algo.video}
+                        autoplay
                         muted
                         loop
                         playsinline
-                        preload="metadata"
+                        preload="auto"
                         class="w-full object-cover"
                         style="aspect-ratio: 1 / 1;"
                     ></video>
