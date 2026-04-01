@@ -1,0 +1,2 @@
+-> add second video for each algorithm (maybe some kind of tab ?)
+-> maybe do fully interactive examples ? where user can add points and we generate the video dynamically with user's points?
